@@ -300,7 +300,7 @@ export default function ScraperTabPanel({
 
   // ── Notify parent when this scraper finishes ─────────────────────
   useEffect(() => {
-    if ((status === 'done' || status === 'skipped') && !completedRef.current && sessionId !== null) {
+    if (status === 'done' && !completedRef.current && sessionId !== null) {
       completedRef.current = true;
       // Brief pause so user can glimpse the result before tab switches
       const t = setTimeout(() => onComplete(rows, sessionId), 600);
