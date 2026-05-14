@@ -162,7 +162,12 @@ export async function run(page, context, helpers) {
   const offenceMap = getOffenceMap();
 
   emitStatus('Opening Jharkhand eChallan portal…');
-  await page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  } catch (err) {
+    emitStatus('[JH] Site unreachable from this server (timeout/block) — skipping Jharkhand.');
+    return [];
+  }
   await page.waitForLoadState('networkidle').catch(() => {});
 
   // ── Ensure "Vehicle registration no." radio is selected ──────────────────

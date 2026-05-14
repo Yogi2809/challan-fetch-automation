@@ -40,7 +40,12 @@ export async function run(page, context, helpers) {
 
   // ── Step 1: Open site and fill search form ──────────────────────
   emitStatus('Opening Surat Traffic Force eChallan portal…');
-  await page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  } catch (err) {
+    emitStatus('[Surat] Site unreachable from this server (timeout/block) — skipping Surat.');
+    return [];
+  }
 
   await safeFind(page, 'input[name="vehicleno"]', { sessionId, timeout: 15000 });
   await page.fill('input[name="vehicleno"]', registrationNumber.toUpperCase());

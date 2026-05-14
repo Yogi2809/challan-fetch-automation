@@ -55,7 +55,12 @@ export async function run(page, context, helpers) {
   const { emitStatus, onCaptchaRequired } = helpers;
 
   emitStatus('Opening MP eChallan portal…');
-  await page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  } catch (err) {
+    emitStatus('[MP] Site unreachable from this server (timeout/block) — skipping MP.');
+    return [];
+  }
 
   // Wait for Vue app to render the search form
   await page.waitForSelector(SEL_VEHICLE_INPUT, { timeout: 20000 });

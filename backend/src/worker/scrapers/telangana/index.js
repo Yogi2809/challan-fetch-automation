@@ -110,7 +110,12 @@ export async function run(page, context, helpers) {
   const { emitStatus, onCaptchaRequired } = helpers;
 
   emitStatus('Opening Telangana Police eChallan portal…');
-  await page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  } catch (err) {
+    emitStatus('[TG] Site unreachable from this server (timeout/block) — skipping Telangana.');
+    return [];
+  }
   await page.waitForLoadState('networkidle').catch(() => {});
 
   // Dismiss any pre-existing modal (feedback form, etc.) that may be open on load

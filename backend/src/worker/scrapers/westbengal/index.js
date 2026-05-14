@@ -178,7 +178,12 @@ export async function run(page, context, helpers) {
   const chassisLast5 = (chassisNumber || '').slice(-5);
 
   emitStatus('Opening West Bengal SANJOG portal…');
-  await page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  } catch (err) {
+    emitStatus('[WB] Site unreachable from this server (timeout/block) — skipping West Bengal.');
+    return [];
+  }
   await page.waitForLoadState('networkidle').catch(() => {});
 
   // ── Click "Pay Your Pending Challan" ─────────────────────────────────────

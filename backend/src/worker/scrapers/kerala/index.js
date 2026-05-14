@@ -84,10 +84,12 @@ export async function run(page, context, helpers) {
   emitStatus(`[KL] Opening Kerala Police eChallan portal… (vehicle: ${formattedRegNo})`);
   emitStatus('[KL] Note: Kerala portal may take up to 2 minutes — please wait…');
 
-  await page.goto(SITE_URL, {
-    waitUntil: 'domcontentloaded',
-    timeout:   60_000,
-  });
+  try {
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  } catch (err) {
+    emitStatus('[KL] Site unreachable from this server (timeout/block) — skipping Kerala.');
+    return [];
+  }
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
   await page.waitForTimeout(1000);
 

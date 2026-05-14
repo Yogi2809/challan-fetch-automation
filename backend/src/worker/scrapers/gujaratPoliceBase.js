@@ -73,7 +73,12 @@ export async function scrapeGujaratPolice(page, siteUrl, challanCourt, context, 
   const { safeFind, emitStatus } = helpers;
 
   emitStatus(`Opening ${siteUrl} …`);
-  await page.goto(siteUrl, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.goto(siteUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  } catch (err) {
+    emitStatus(`[Gujarat] Timeout reaching ${challanCourt} — treating as IP block, switching proxy…`);
+    throw new WafBlockError(siteUrl);
+  }
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
   // Detect WAF / IP block early
