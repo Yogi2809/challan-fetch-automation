@@ -163,7 +163,7 @@ export async function run(page, context, helpers) {
 
   emitStatus('Opening Jharkhand eChallan portal…');
   try {
-    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } catch (err) {
     emitStatus('[JH] Site unreachable from this server (timeout/block) — skipping Jharkhand.');
     return [];

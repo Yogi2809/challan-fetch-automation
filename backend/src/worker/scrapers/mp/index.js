@@ -56,7 +56,7 @@ export async function run(page, context, helpers) {
 
   emitStatus('Opening MP eChallan portal…');
   try {
-    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } catch (err) {
     emitStatus('[MP] Site unreachable from this server (timeout/block) — skipping MP.');
     return [];
@@ -78,7 +78,9 @@ export async function run(page, context, helpers) {
       return page.locator(SEL_CAPTCHA_IMG).screenshot();
     },
     fillAndSubmit: async (value) => {
-      await page.fill(SEL_CAPTCHA_TEXT, value);
+      await page.click(SEL_CAPTCHA_TEXT);
+      await page.fill(SEL_CAPTCHA_TEXT, '');
+      await page.locator(SEL_CAPTCHA_TEXT).pressSequentially(value, { delay: 40 });
       await page.click(SEL_SEARCH_BTN);
     },
     checkOutcome: async () => {

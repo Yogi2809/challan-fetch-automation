@@ -41,7 +41,7 @@ export async function run(page, context, helpers) {
   // ── Step 1: Open site and fill search form ──────────────────────
   emitStatus('Opening Surat Traffic Force eChallan portal…');
   try {
-    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } catch (err) {
     emitStatus('[Surat] Site unreachable from this server (timeout/block) — skipping Surat.');
     return [];

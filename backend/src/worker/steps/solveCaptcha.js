@@ -62,7 +62,9 @@ export async function solveCaptcha(page, sessionId, onCaptchaRequired, emitStatu
     captchaResolvers.delete(sessionId);
 
     emitStatus('CAPTCHA received — submitting search…');
-    await page.fill(SEL_CAPTCHA_TEXT, captchaText.trim());
+    await page.click(SEL_CAPTCHA_TEXT);
+    await page.fill(SEL_CAPTCHA_TEXT, '');
+    await page.locator(SEL_CAPTCHA_TEXT).pressSequentially(captchaText.trim(), { delay: 40 });
     await page.click(SEL_SEARCH_BTN);
 
     // Wait for: results area OR any dialog OR "No Challan" text appearing anywhere on page

@@ -179,7 +179,7 @@ export async function run(page, context, helpers) {
 
   emitStatus('Opening West Bengal SANJOG portal…');
   try {
-    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } catch (err) {
     emitStatus('[WB] Site unreachable from this server (timeout/block) — skipping West Bengal.');
     return [];
@@ -228,13 +228,13 @@ export async function run(page, context, helpers) {
         const body = t.querySelector('tbody')?.textContent || '';
         return body.trim().length > 0;
       },
-      { timeout: 30000 }
+      { timeout: 60000 }
     ).then(() => 'results'),
     page.waitForFunction(
       () => /No data available in table/i.test(
         document.querySelector('#tbl_provider_details tbody')?.textContent || ''
       ),
-      { timeout: 30000 }
+      { timeout: 60000 }
     ).then(() => 'no_data'),
   ]).catch(() => 'timeout');
 

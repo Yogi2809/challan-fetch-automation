@@ -111,7 +111,7 @@ export async function run(page, context, helpers) {
 
   emitStatus('Opening Telangana Police eChallan portal…');
   try {
-    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } catch (err) {
     emitStatus('[TG] Site unreachable from this server (timeout/block) — skipping Telangana.');
     return [];
