@@ -425,11 +425,11 @@ export default function ScraperTabPanel({
 
   async function handleRetry() {
     retryCountRef.current += 1;
-    // Auto-skip after 3 manual retries — mark as needs manual check
+    // After 3 manual retries — show error, let user decide to skip manually
     if (retryCountRef.current > 3) {
-      setError('Maximum retries reached — please check this site manually.');
-      setStatus('manual');
-      onSkip();   // advance the sequence
+      setError('Maximum retries reached — please check this site manually, then click Skip.');
+      setStatus('error');
+      onError();
       return;
     }
     completedRef.current = false;
@@ -458,10 +458,10 @@ export default function ScraperTabPanel({
       setTimeout(() => handleRetry(), 5000);
       return true;
     }
-    // Exhausted auto-retries — mark manual
-    setStatus('manual');
+    // Exhausted auto-retries — show error, let user decide to skip manually
+    setStatus('error');
     setError(errMsg);
-    onSkip();
+    onError();
     return true;
   }
 

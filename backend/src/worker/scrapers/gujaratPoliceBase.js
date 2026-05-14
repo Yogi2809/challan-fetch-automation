@@ -7,8 +7,24 @@ import { applyPIIMasks } from '../../utils/maskPII.js';
  * Both run the identical ASP.NET WebForms template — same IDs, same structure.
  */
 
-const SEL_VEHICLE_INPUT = '#ContentPlaceHolder1_txtVehicleNo';
-const SEL_SUBMIT_BTN    = '#ContentPlaceHolder1_btnSubmit';
+const SEL_VEHICLE_INPUT_CANDIDATES = [
+  '#ContentPlaceHolder1_txtVehicleNo',
+  'input[id*="txtVehicleNo"]',
+  'input[id*="VehicleNo"]',
+  'input[name*="VehicleNo"]',
+  'input[placeholder*="Vehicle"]',
+  'input[placeholder*="vehicle"]',
+  'input[placeholder*="Number"]',
+  'input[type="text"]:visible',
+];
+const SEL_SUBMIT_BTN_CANDIDATES = [
+  '#ContentPlaceHolder1_btnSubmit',
+  'input[id*="btnSubmit"]',
+  'input[type="submit"]',
+  'button[type="submit"]',
+  'button:has-text("Submit")',
+  'button:has-text("Search")',
+];
 const SEL_CHALLAN_LIST  = 'section.challan-list';
 const SEL_NO_RECORDS    = '#ContentPlaceHolder1_divEmpty';
 const SEL_RESULT_PANEL  = '#ContentPlaceHolder1_homepageblockright';
@@ -30,20 +46,41 @@ function parseDate(raw) {
  * @param {{ safeFind, emitStatus }} helpers
  * @returns {Promise<ScrapedRow[]>}
  */
+async function findSelector(page, candidates, timeoutMs = 10000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    for (const sel of candidates) {
+      try {
+        const count = await page.locator(sel).count();
+        if (count > 0) return sel;
+      } catch (_) {}
+    }
+    await page.waitForTimeout(300);
+  }
+  return null;
+}
+
 export async function scrapeGujaratPolice(page, siteUrl, challanCourt, context, helpers) {
   const { registrationNumber, sessionId } = context;
   const { safeFind, emitStatus } = helpers;
 
   emitStatus(`Opening ${siteUrl} …`);
   await page.goto(siteUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
-  await safeFind(page, SEL_VEHICLE_INPUT, { sessionId, timeout: 15000 });
-  await page.fill(SEL_VEHICLE_INPUT, registrationNumber.toUpperCase());
+  const vehicleSel = await findSelector(page, SEL_VEHICLE_INPUT_CANDIDATES, 15000);
+  if (!vehicleSel) throw new Error(`[Gujarat] Vehicle input not found on ${siteUrl} — site may have changed`);
+  emitStatus(`[Gujarat] Found vehicle input: ${vehicleSel}`);
+
+  const submitSel = await findSelector(page, SEL_SUBMIT_BTN_CANDIDATES, 5000);
+  if (!submitSel) throw new Error(`[Gujarat] Submit button not found on ${siteUrl}`);
+
+  await page.fill(vehicleSel, registrationNumber.toUpperCase());
   emitStatus(`Searching challans for ${registrationNumber}…`);
 
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }),
-    page.click(SEL_SUBMIT_BTN),
+    page.click(submitSel),
   ]);
 
   // Race: challan sections appear  OR  "No Records Found!" div appears

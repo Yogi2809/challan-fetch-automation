@@ -53,10 +53,12 @@ export async function runAutomation(job, io) {
     if (job.data.registrationNumber) {
       ({ registrationNumber, chassisNumber, engineNumber } = job.data);
       emitStatus(`[${scraper.label}] Job started — using manually entered vehicle details…`);
-    } else {
+    } else if (appointmentId) {
       emitStatus(`[${scraper.label}] Job started — fetching vehicle details…`);
       const vehicle = await getVehicleDetails(appointmentId);
       ({ registrationNumber, chassisNumber, engineNumber } = vehicle);
+    } else {
+      throw new Error('No vehicle details provided. Please enter Registration No, Chassis No, and Engine No manually.');
     }
     const chassisLast4 = chassisNumber.slice(-4);
     const engineLast4  = engineNumber.slice(-4);

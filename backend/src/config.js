@@ -17,7 +17,7 @@ export const config = {
   awsBucket:             process.env.AWS_BUCKET || '',
   awsRegion:             process.env.AWS_REGION || 'ap-south-1',
 
-  workerConcurrency:     parseInt(process.env.WORKER_CONCURRENCY || '2'),
+  workerConcurrency:     parseInt(process.env.WORKER_CONCURRENCY || '1'),
   otpTimeoutMs:          parseInt(process.env.OTP_TIMEOUT_MS || '600000'),
   playwrightHeadless:    process.env.PLAYWRIGHT_HEADLESS !== 'false',
 
