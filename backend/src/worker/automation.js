@@ -9,7 +9,6 @@ import { getScraperById } from './scrapers/registry.js';
 import { JobRecord } from '../models/JobRecord.js';
 import { config } from '../config.js';
 import { getNextProxy, hasProxies, proxyCount } from '../utils/proxyRotator.js';
-import { getFreeProxies } from '../utils/proxyFetcher.js';
 import { WafBlockError } from './scrapers/gujaratPoliceBase.js';
 
 export const IMAGE_DIR = '/tmp/challan-proofs';
@@ -110,24 +109,15 @@ export async function runAutomation(job, io) {
     } catch (err) {
       if (!(err instanceof WafBlockError)) throw err;
 
-      // ── Proxy rotation: try configured proxies first, then free ones ──
-      let proxyList = hasProxies()
-        ? Array.from({ length: proxyCount() }, () => getNextProxy())
-        : [];
-
-      if (!proxyList.length) {
-        emitStatus('[Proxy] No static proxies configured — fetching free proxies…');
-        proxyList = await getFreeProxies(emitStatus);
-      }
-
-      if (!proxyList.length) {
-        emitStatus(`[Proxy] No working proxies found. Skipping ${scraper.label}.`);
+      // ── Proxy rotation: try each proxy until one works or all exhausted ──
+      if (!hasProxies()) {
+        emitStatus(`[Proxy] No proxies configured (PROXY_LIST env var). Skipping ${scraper.label}.`);
         scrapedRows = [];
       } else {
         let succeeded = false;
-        for (let attempt = 0; attempt < proxyList.length; attempt++) {
-          const proxy = proxyList[attempt];
-          emitStatus(`[Proxy] Attempt ${attempt + 1}/${proxyList.length} via ${proxy.replace(/:[^:@]+@/, ':***@')}…`);
+        for (let attempt = 0; attempt < proxyCount(); attempt++) {
+          const proxy = getNextProxy();
+          emitStatus(`[Proxy] Attempt ${attempt + 1}/${proxyCount()} via ${proxy.replace(/:[^:@]+@/, ':***@')}…`);
           try {
             scrapedRows = await launchAndRun(proxy);
             succeeded = true;
@@ -141,7 +131,7 @@ export async function runAutomation(job, io) {
           }
         }
         if (!succeeded) {
-          emitStatus(`[Proxy] All ${proxyList.length} proxies exhausted — ${scraper.label} is blocking all IPs. Skipping.`);
+          emitStatus(`[Proxy] All ${proxyCount()} proxies exhausted — ${scraper.label} is blocking all IPs. Skipping.`);
           scrapedRows = [];
         }
       }
