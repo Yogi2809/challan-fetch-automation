@@ -204,6 +204,17 @@ export default function createJobRoutes(io) {
     }
   });
 
+  // ── Drain + obliterate entire queue ──────────────────────────
+  router.post('/admin/drain-queue', async (req, res) => {
+    try {
+      await challanQueue.drain();
+      await challanQueue.obliterate({ force: true });
+      res.json({ ok: true, message: 'Queue drained and all jobs removed.' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Mark manual ───────────────────────────────────────────────
   router.post('/:sessionId/manual', async (req, res) => {
     try {
