@@ -4,6 +4,9 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIO } from 'socket.io';
 import mongoose from 'mongoose';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 import { config } from './config.js';
 import createJobRoutes from './routes/jobs.js';
 import { requireAuth } from './middleware/auth.js';
@@ -12,6 +15,8 @@ import { JobRecord } from './models/JobRecord.js';
 import { otpResolvers, captchaResolvers } from './utils/sessionStore.js';
 import { challanQueue } from './queue/challanQueue.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 const app    = express();
 const server = createServer(app);
 const io     = new SocketIO(server, { cors: { origin: '*' } });
@@ -19,6 +24,12 @@ const io     = new SocketIO(server, { cors: { origin: '*' } });
 app.use(cors());
 app.use(express.json());
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Serve built frontend when running in production (Railway)
+const frontendDist = join(__dirname, '../../frontend/dist');
+if (existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+}
 
 // ── Admin: clear queue ────────────────────────────────────────────────────────
 app.post('/api/admin/queue/clear', requireAuth, async (_req, res) => {
@@ -81,6 +92,11 @@ io.on('connection', (socket) => {
     } catch (_) {}
   });
 });
+
+// SPA fallback — must be after all API routes
+if (existsSync(frontendDist)) {
+  app.get('*', (_req, res) => res.sendFile(join(frontendDist, 'index.html')));
+}
 
 async function bootstrap() {
   await mongoose.connect(config.mongoUri);
