@@ -1,5 +1,6 @@
 {
   "name": "challan-fetch-automation",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "npm --prefix frontend install && npm --prefix frontend run build && npm --prefix backend install && npx --prefix backend playwright install chromium --with-deps",
