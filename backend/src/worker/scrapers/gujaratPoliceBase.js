@@ -1,5 +1,13 @@
 import { applyPIIMasks } from '../../utils/maskPII.js';
 
+export class WafBlockError extends Error {
+  constructor(url) {
+    super(`Server IP blocked by WAF on ${url}`);
+    this.name = 'WafBlockError';
+    this.blockedUrl = url;
+  }
+}
+
 /**
  * Shared scraper logic for Gujarat Police eChallan sites
  * (Rajkot: rajkotcitypolice.co.in, Vadodara: vadodaraechallan.co.in)
@@ -68,12 +76,14 @@ export async function scrapeGujaratPolice(page, siteUrl, challanCourt, context, 
   await page.goto(siteUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
-  // Debug: log what the page actually looks like on this machine
-  const pageTitle   = await page.title().catch(() => '(no title)');
-  const pageUrl     = page.url();
-  const pagePreview = await page.evaluate(() => document.body?.innerText?.trim().slice(0, 300)).catch(() => '');
-  emitStatus(`[Gujarat] Page loaded — title: "${pageTitle}" | url: ${pageUrl}`);
-  emitStatus(`[Gujarat] Page text preview: ${pagePreview.replace(/\s+/g, ' ').slice(0, 200)}`);
+  // Detect WAF / IP block early
+  const pageTitle = await page.title().catch(() => '');
+  const pageText  = await page.evaluate(() => document.body?.innerText?.trim().slice(0, 400)).catch(() => '');
+  const isBlocked = /blocked|cannot be displayed|access denied|forbidden|attack id/i.test(pageTitle + ' ' + pageText);
+  if (isBlocked) {
+    emitStatus(`[Gujarat] Server IP blocked by ${challanCourt}'s firewall — switching proxy…`);
+    throw new WafBlockError(siteUrl);
+  }
 
   const vehicleSel = await findSelector(page, SEL_VEHICLE_INPUT_CANDIDATES, 15000);
   if (!vehicleSel) throw new Error(`[Gujarat] Vehicle input not found on ${siteUrl} — site may have changed`);

@@ -8,6 +8,8 @@ import { safeFind as safeFindFn } from './safeFind.js';
 import { getScraperById } from './scrapers/registry.js';
 import { JobRecord } from '../models/JobRecord.js';
 import { config } from '../config.js';
+import { getNextProxy, hasProxies, proxyCount } from '../utils/proxyRotator.js';
+import { WafBlockError } from './scrapers/gujaratPoliceBase.js';
 
 export const IMAGE_DIR = '/tmp/challan-proofs';
 
@@ -69,11 +71,6 @@ export async function runAutomation(job, io) {
     emitStatus(`Vehicle: ${registrationNumber} — opening ${scraper.label}…`);
     emitProgress(15);
 
-    // ── Launch browser ────────────────────────────────────────────
-    browser = await chromium.launch({ headless: config.playwrightHeadless });
-    const browserCtx = await browser.newContext();
-    const page       = await browserCtx.newPage();
-
     const safeFind = (p, sel, opts) => safeFindFn(p, sel, { sessionId, ...opts });
 
     const onOtpRequired = async (site) => {
@@ -89,14 +86,56 @@ export async function runAutomation(job, io) {
       io.to(sessionId).emit('captcha_required', { sessionId, image: captchaBase64 });
     };
 
-    // ── Run scraper ───────────────────────────────────────────────
-    const scrapedRows = await scraper.run(
-      page,
-      { registrationNumber, mobileNumber, chassisLast4, engineLast4,
-        chassisNumber, engineNumber,   // full values — WB scraper needs last-5 chassis
-        sessionId, otpResolvers },
-      { safeFind, emitStatus, emitProgress, onOtpRequired, onCaptchaRequired },
-    );
+    // ── Launch browser + run scraper (with proxy-rotation on WAF block) ───
+    async function launchAndRun(proxyServer) {
+      if (browser) await browser.close().catch(() => {});
+      browser = await chromium.launch({
+        headless: config.playwrightHeadless,
+        ...(proxyServer ? { proxy: { server: proxyServer } } : {}),
+      });
+      const ctx  = await browser.newContext();
+      const page = await ctx.newPage();
+      return scraper.run(
+        page,
+        { registrationNumber, mobileNumber, chassisLast4, engineLast4,
+          chassisNumber, engineNumber, sessionId, otpResolvers },
+        { safeFind, emitStatus, emitProgress, onOtpRequired, onCaptchaRequired },
+      );
+    }
+
+    let scrapedRows;
+    try {
+      scrapedRows = await launchAndRun(null);
+    } catch (err) {
+      if (!(err instanceof WafBlockError)) throw err;
+
+      // ── Proxy rotation: try each proxy until one works or all exhausted ──
+      if (!hasProxies()) {
+        emitStatus(`[Proxy] No proxies configured (PROXY_LIST env var). Skipping ${scraper.label}.`);
+        scrapedRows = [];
+      } else {
+        let succeeded = false;
+        for (let attempt = 0; attempt < proxyCount(); attempt++) {
+          const proxy = getNextProxy();
+          emitStatus(`[Proxy] Attempt ${attempt + 1}/${proxyCount()} via ${proxy.replace(/:[^:@]+@/, ':***@')}…`);
+          try {
+            scrapedRows = await launchAndRun(proxy);
+            succeeded = true;
+            break;
+          } catch (proxyErr) {
+            if (proxyErr instanceof WafBlockError) {
+              emitStatus(`[Proxy] Still blocked on attempt ${attempt + 1} — trying next…`);
+            } else {
+              throw proxyErr;
+            }
+          }
+        }
+        if (!succeeded) {
+          emitStatus(`[Proxy] All ${proxyCount()} proxies exhausted — ${scraper.label} is blocking all IPs. Skipping.`);
+          scrapedRows = [];
+        }
+      }
+    }
 
     emitStatus(`Scraped ${scrapedRows.length} challan(s) from ${scraper.label}.`);
     emitProgress(90);
