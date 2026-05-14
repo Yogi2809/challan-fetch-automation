@@ -62,6 +62,7 @@ export default function createJobRoutes(io) {
       await JobRecord.create({
         sessionId, appointmentId: apptId, mobileNumber,
         createdBy: jobCreatedBy, scraperId, status: 'queued',
+        registrationNumber, chassisNumber, engineNumber,
       });
       await challanQueue.add('fetch-challans', {
         sessionId, appointmentId: apptId, mobileNumber,
@@ -192,11 +193,14 @@ export default function createJobRoutes(io) {
         status: 'queued',
       });
       await challanQueue.add('fetch-challans', {
-        sessionId:     newSessionId,
-        appointmentId: job.appointmentId,
-        mobileNumber:  job.mobileNumber,
-        createdBy:     req.body.newCreatedBy || job.createdBy,
-        scraperId:     job.scraperId,
+        sessionId:          newSessionId,
+        appointmentId:      job.appointmentId,
+        mobileNumber:       job.mobileNumber,
+        createdBy:          req.body.newCreatedBy || job.createdBy,
+        scraperId:          job.scraperId,
+        registrationNumber: job.registrationNumber,
+        chassisNumber:      job.chassisNumber,
+        engineNumber:       job.engineNumber,
       });
       res.json({ newSessionId });
     } catch (err) {
