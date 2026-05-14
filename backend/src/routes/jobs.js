@@ -222,8 +222,22 @@ export default function createJobRoutes(io) {
   // ── Mark manual ───────────────────────────────────────────────
   router.post('/:sessionId/manual', async (req, res) => {
     try {
-      await terminateSession(req.params.sessionId);
-      await JobRecord.findOneAndUpdate({ sessionId: req.params.sessionId }, { status: 'manual' });
+      const { sessionId } = req.params;
+      await terminateSession(sessionId);
+
+      // Forcefully remove the BullMQ job so the worker slot is freed immediately
+      const active = await challanQueue.getActive();
+      const activeJob = active.find(j => j.data.sessionId === sessionId);
+      if (activeJob) {
+        await activeJob.moveToFailed(new Error('Skipped by user'), '0', true).catch(() => {});
+      } else {
+        // Job may still be waiting — remove it from the queue
+        const waiting = await challanQueue.getWaiting();
+        const waitingJob = waiting.find(j => j.data.sessionId === sessionId);
+        if (waitingJob) await waitingJob.remove().catch(() => {});
+      }
+
+      await JobRecord.findOneAndUpdate({ sessionId }, { status: 'manual' });
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });

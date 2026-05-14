@@ -13,7 +13,14 @@ export async function terminateSession(sessionId) {
     try { await worker.kill(); } catch (_) {}
     activeWorkers.delete(sessionId);
   }
+  // Resolve pending promises with null so their awaits unblock and the scraper exits cleanly
+  const otpResolve = otpResolvers.get(sessionId);
+  if (otpResolve) { try { otpResolve(null); } catch (_) {} }
   otpResolvers.delete(sessionId);
+
+  const captchaResolve = captchaResolvers.get(sessionId);
+  if (captchaResolve) { try { captchaResolve(null); } catch (_) {} }
   captchaResolvers.delete(sessionId);
+
   resendHandlers.delete(sessionId);
 }
