@@ -1,6 +1,7 @@
 node_modules/
 dist/
 frontend/package-lock.json
+backend/package-lock.json
 .env
 *.env.local
 backend/uploads/
