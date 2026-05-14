@@ -189,7 +189,9 @@ export async function run(page, context, helpers) {
     return 'input[type="text"]:first-of-type';
   });
   const finalVehicleSel = vehicleInputSel || 'input[type="text"]:first-of-type';
-  await page.fill(finalVehicleSel, registrationNumber.toUpperCase());
+  await page.click(finalVehicleSel).catch(() => {});
+  await page.fill(finalVehicleSel, '');
+  await page.locator(finalVehicleSel).pressSequentially(registrationNumber.toUpperCase(), { delay: 30 });
   emitStatus(`[JH] Entered registration number`);
 
   // ── CAPTCHA: auto-solve (AI) with human fallback ─────────────────────────
@@ -207,7 +209,10 @@ export async function run(page, context, helpers) {
       if (inp.name) return `input[name="${inp.name}"]`;
       return null;
     });
-    await page.fill(captchaInputSel || SEL_CAPTCHA_TEXT, value);
+    const captchaSel = captchaInputSel || SEL_CAPTCHA_TEXT;
+    await page.click(captchaSel).catch(() => {});
+    await page.fill(captchaSel, '');
+    await page.locator(captchaSel).pressSequentially(value, { delay: 40 });
     emitStatus('[JH] Clicking search button…');
     await Promise.all([
       page.locator(
@@ -227,7 +232,10 @@ export async function run(page, context, helpers) {
     if (/captcha did not match|captcha\s+incorrect|wrong\s+captcha/i.test(postText)) return 'wrong_captcha';
     if (tableRows > 0)                                                                 return 'found';
     if (/record not available|no record|no\s+data/i.test(postText))                  return 'no_challans';
-    return 'wrong_captcha'; // unknown — treat as retry
+    // Unknown state — treat as wrong_captcha only if still on the search/input page
+    // (i.e. the form didn't navigate at all, suggesting input was rejected)
+    if (/payonline|search|captcha/i.test(await page.url().catch(() => '')))            return 'wrong_captcha';
+    return 'no_challans'; // navigated somewhere unknown — assume no challans
   };
 
   const jhOnWrongCaptcha = async () => {
@@ -236,7 +244,9 @@ export async function run(page, context, helpers) {
     await page.waitForLoadState('networkidle').catch(() => {});
     const r = await page.locator('input[type="radio"]').all();
     if (r.length > 0) await r[0].click().catch(() => {});
-    await page.fill(finalVehicleSel, registrationNumber.toUpperCase()).catch(() => {});
+    await page.click(finalVehicleSel).catch(() => {});
+    await page.fill(finalVehicleSel, '').catch(() => {});
+    await page.locator(finalVehicleSel).pressSequentially(registrationNumber.toUpperCase(), { delay: 30 }).catch(() => {});
   };
 
   const jhHumanFallback = async () => {
