@@ -91,17 +91,23 @@ export async function scrapeGujaratPolice(page, siteUrl, challanCourt, context, 
   }
 
   const vehicleSel = await findSelector(page, SEL_VEHICLE_INPUT_CANDIDATES, 15000);
-  if (!vehicleSel) throw new Error(`[Gujarat] Vehicle input not found on ${siteUrl} — site may have changed`);
+  if (!vehicleSel) {
+    emitStatus(`[Gujarat] Vehicle input not found on ${challanCourt} — WAF block page likely served.`);
+    throw new WafBlockError(siteUrl);
+  }
   emitStatus(`[Gujarat] Found vehicle input: ${vehicleSel}`);
 
   const submitSel = await findSelector(page, SEL_SUBMIT_BTN_CANDIDATES, 5000);
-  if (!submitSel) throw new Error(`[Gujarat] Submit button not found on ${siteUrl}`);
+  if (!submitSel) {
+    emitStatus(`[Gujarat] Submit button not found on ${challanCourt} — treating as blocked.`);
+    throw new WafBlockError(siteUrl);
+  }
 
   await page.fill(vehicleSel, registrationNumber.toUpperCase());
   emitStatus(`Searching challans for ${registrationNumber}…`);
 
   await Promise.all([
-    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {}),
     page.click(submitSel),
   ]);
 
